@@ -4,7 +4,7 @@
 URL="http://localhost"   # Or http://<EC2_PUBLIC_IP> if remote
 
 # Recipient email
-EMAIL="your-email@example.com"
+EMAIL="rajakarthika19@gmail.com"
 
 # Log file
 LOG="/tmp/app_health.log"
