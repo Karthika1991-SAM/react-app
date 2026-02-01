@@ -3,11 +3,11 @@ pipeline {
 
     environment {
         DOCKER_USER = "karthikarajendran19"
-        DOCKERHUB_CREDS = credentials('dockerhub-creds')  // Docker Hub credentials ID
+        DOCKERHUB_CREDS = credentials('dockerhub-creds')
     }
 
     triggers {
-        pollSCM('H/5 * * * *') // Poll GitHub every 5 min OR you can set webhook triggers
+        pollSCM('H/5 * * * *') // Poll GitHub every 5 min
     }
 
     stages {
@@ -21,17 +21,18 @@ pipeline {
         stage('Set Branch & Repo') {
             steps {
                 script {
-                   def BRANCH_NAME = env.GIT_BRANCH ?: sh(script: "git rev-parse --abbrev-ref HEAD", returnStdout: true).trim()
-
-                    if (BRANCH_NAME == "dev") {
-                        REPO = "dev"
-                    } else if (BRANCH_NAME == "master") {
-                        REPO = "prod"
+                    // Use env.BRANCH_NAME so it is global
+                    env.BRANCH_NAME = env.GIT_BRANCH ?: sh(script: "git rev-parse --abbrev-ref HEAD", returnStdout: true).trim()
+                    
+                    if (env.BRANCH_NAME == "dev") {
+                        env.REPO = "dev"
+                    } else if (env.BRANCH_NAME == "master") {
+                        env.REPO = "prod"
                     } else {
-                        error("Unsupported branch: ${BRANCH_NAME}")
+                        error("Unsupported branch: ${env.BRANCH_NAME}")
                     }
 
-                    echo "Branch: ${BRANCH_NAME}, Docker Repo: ${REPO}"
+                    echo "Branch: ${env.BRANCH_NAME}, Docker Repo: ${env.REPO}"
                 }
             }
         }
@@ -39,11 +40,11 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    TAG = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
+                    env.TAG = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
                     
                     sh """
-                    docker build -t ${DOCKER_USER}/${REPO}:${TAG} .
-                    docker tag ${DOCKER_USER}/${REPO}:${TAG} ${DOCKER_USER}/${REPO}:latest
+                        docker build -t ${DOCKER_USER}/${REPO}:${TAG} .
+                        docker tag ${DOCKER_USER}/${REPO}:${TAG} ${DOCKER_USER}/${REPO}:latest
                     """
                 }
             }
@@ -51,11 +52,11 @@ pipeline {
 
         stage('Docker Login & Push') {
             steps {
-                script {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKERHUB_USR', passwordVariable: 'DOCKERHUB_PSW')]) {
                     sh """
-                    echo ${DOCKERHUB_CREDS_PSW} | docker login -u ${DOCKERHUB_CREDS_USR} --password-stdin
-                    docker push ${DOCKER_USER}/${REPO}:${TAG}
-                    docker push ${DOCKER_USER}/${REPO}:latest
+                        echo ${DOCKERHUB_PSW} | docker login -u ${DOCKERHUB_USR} --password-stdin
+                        docker push ${DOCKER_USER}/${REPO}:${TAG}
+                        docker push ${DOCKER_USER}/${REPO}:latest
                     """
                 }
             }
@@ -64,9 +65,8 @@ pipeline {
         stage('Deploy Application') {
             steps {
                 script {
-                    // Optional: Deploy automatically via deploy.sh if your EC2 server allows SSH access
                     sh """
-                    ssh -o StrictHostKeyChecking=no ubuntu@35.172.212.253  'bash -s' < ./deploy.sh
+                        ssh -o StrictHostKeyChecking=no ubuntu@35.172.212.253 'bash -s' < ./deploy.sh
                     """
                 }
             }
@@ -76,10 +76,10 @@ pipeline {
 
     post {
         success {
-            echo "Pipeline completed successfully for ${BRANCH_NAME}"
+            echo "Pipeline completed successfully for ${env.BRANCH_NAME}"
         }
         failure {
-            echo "Pipeline failed for ${BRANCH_NAME}"
+            echo "Pipeline failed for ${env.BRANCH_NAME}"
         }
     }
 }
