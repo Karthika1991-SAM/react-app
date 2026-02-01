@@ -21,7 +21,7 @@ pipeline {
         stage('Set Branch & Repo') {
             steps {
                 script {
-                    BRANCH_NAME = env.GIT_BRANCH ?: sh(script: "git rev-parse --abbrev-ref HEAD", returnStdout: true).trim()
+                   def BRANCH_NAME = env.GIT_BRANCH ?: sh(script: "git rev-parse --abbrev-ref HEAD", returnStdout: true).trim()
 
                     if (BRANCH_NAME == "dev") {
                         REPO = "dev"
