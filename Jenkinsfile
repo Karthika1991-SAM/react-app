@@ -72,7 +72,9 @@ pipeline {
             }
         }
 
-    } // stages
+    } 
+    
+    // stages
 
     post {
         success {
