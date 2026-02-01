@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         DOCKER_USER = "karthikarajendran19"
-        DOCKERHUB_CREDS = credentials('dockerhub-creds')
+        DOCKERHUB_CREDS = credentials('dockerhub-creds')  // Docker Hub credentials ID
     }
 
     triggers {
@@ -21,9 +21,10 @@ pipeline {
         stage('Set Branch & Repo') {
             steps {
                 script {
-                    // Use env.BRANCH_NAME so it is global
-                    env.BRANCH_NAME = env.GIT_BRANCH ?: sh(script: "git rev-parse --abbrev-ref HEAD", returnStdout: true).trim()
-                    
+                    // Strip 'origin/' prefix from branch name for consistency
+                    env.BRANCH_NAME = (env.GIT_BRANCH ?: sh(script: "git rev-parse --abbrev-ref HEAD", returnStdout: true).trim()).replace('origin/', '')
+
+                    // Map branch to Docker repo
                     if (env.BRANCH_NAME == "dev") {
                         env.REPO = "dev"
                     } else if (env.BRANCH_NAME == "master") {
@@ -40,11 +41,15 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
+                    // Git commit hash as Docker tag
                     env.TAG = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
+                    env.DOCKER_IMAGE = "${DOCKER_USER}/${REPO}:${TAG}"
                     
+                    echo "Building Docker image: ${DOCKER_IMAGE}"
+
                     sh """
-                        docker build -t ${DOCKER_USER}/${REPO}:${TAG} .
-                        docker tag ${DOCKER_USER}/${REPO}:${TAG} ${DOCKER_USER}/${REPO}:latest
+                        docker build -t ${DOCKER_IMAGE} .
+                        docker tag ${DOCKER_IMAGE} ${DOCKER_USER}/${REPO}:latest
                     """
                 }
             }
@@ -53,18 +58,27 @@ pipeline {
         stage('Docker Login & Push') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKERHUB_USR', passwordVariable: 'DOCKERHUB_PSW')]) {
-                    sh """
-                        echo ${DOCKERHUB_PSW} | docker login -u ${DOCKERHUB_USR} --password-stdin
-                        docker push ${DOCKER_USER}/${REPO}:${TAG}
-                        docker push ${DOCKER_USER}/${REPO}:latest
-                    """
+                    script {
+                        sh """
+                            echo ${DOCKERHUB_PSW} | docker login -u ${DOCKERHUB_USR} --password-stdin
+                            docker push ${DOCKER_IMAGE}
+                            docker push ${DOCKER_USER}/${REPO}:latest
+                        """
+                    }
                 }
             }
         }
 
         stage('Deploy Application') {
+            when {
+                anyOf {
+                    branch 'dev'
+                    branch 'master'
+                }
+            }
             steps {
                 script {
+                    // Deploy via SSH only on dev or master
                     sh """
                         ssh -o StrictHostKeyChecking=no ubuntu@35.172.212.253 'bash -s' < ./deploy.sh
                     """
@@ -72,9 +86,7 @@ pipeline {
             }
         }
 
-    } 
-    
-    // stages
+    } // end of stages
 
     post {
         success {
