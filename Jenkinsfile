@@ -69,22 +69,14 @@ pipeline {
             }
         }
 
-        stage('Deploy Application') {
-            when {
-                anyOf {
-                    branch 'dev'
-                    branch 'master'
-                }
-            }
-            steps {
-                script {
-                    // Deploy via SSH only on dev or master
-                    sh """
-                        ssh -o StrictHostKeyChecking=no ubuntu@35.172.212.253 'bash -s' < ./deploy.sh
-                    """
-                }
-            }
+       stage('Deploy Application') {
+    steps {
+        sshagent(['ec2-key']) {
+            sh 'ssh -o StrictHostKeyChecking=no ubuntu@35.172.212.253 bash -s'
         }
+    }
+}
+
 
     } // end of stages
 
