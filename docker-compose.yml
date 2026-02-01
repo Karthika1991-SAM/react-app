@@ -1,8 +1,9 @@
 version: "3.8"
 
 services:
-  web:
-    image: karthikarajendran19/dev:latest
+  app:
+    image: devops-build:latest
+    container_name: devops_app
     ports:
       - "80:80"
     restart: always
