@@ -72,7 +72,7 @@ pipeline {
        stage('Deploy Application') {
     steps {
         sshagent(['ec2-key']) {
-            sh 'ssh -o StrictHostKeyChecking=no ubuntu@35.172.212.253 bash -s'
+            sh 'ssh -o StrictHostKeyChecking=no ssh ubuntu@13.126.114.47 bash -s'
         }
     }
 }
