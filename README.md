@@ -73,7 +73,7 @@ Docker and docker-compose installed on EC2 for deployment
 
 Monitoring
 
-Application health checks configured using a simple monitoring script
+Application health checks configured using Uptime Kuma
 
 Sends notifications only if the application is down
 
@@ -87,5 +87,3 @@ Prod repo: private
 
 Docker images tagged and pushed according to branch strategy
 
-Author ,
-Karthika.R
