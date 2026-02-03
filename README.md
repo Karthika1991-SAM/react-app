@@ -87,5 +87,3 @@ Prod repo: private
 
 Docker images tagged and pushed according to branch strategy
 
-Author ,
-Karthika Rajendran
